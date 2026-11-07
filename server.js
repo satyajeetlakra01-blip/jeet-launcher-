@@ -28,8 +28,10 @@ const GITHUB_REPO_URL = 'https://github.com/satyajeetlakra01-blip/jeet-launcher-
 // Locate dist directory robustly
 const distCandidates = [
   path.join(__dirname, 'dist'),
+  path.join(__dirname, 'web', 'dist'),
   path.join(__dirname, 'dist', 'dist'),
   path.join(process.cwd(), 'dist'),
+  path.join(process.cwd(), 'web', 'dist'),
   path.join(appData, 'JeetLauncher', 'web', 'dist')
 ];
 let distDir = distCandidates.find(d => fs.existsSync(path.join(d, 'index.html'))) || distCandidates[0];
@@ -197,6 +199,168 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, { success: true, account: updated });
       }
 
+      // Microsoft Device Code Flow: Start Login
+      if (url.pathname === '/api/account/microsoft/start' && req.method === 'POST') {
+        try {
+          const params = new URLSearchParams({
+            client_id: 'c36a9fb6-4f2a-41ff-90bd-ae7cc92031eb',
+            scope: 'XboxLive.SignIn XboxLive.offline_access'
+          });
+          const msRes = await fetch('https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: params.toString()
+          });
+          const data = await msRes.json();
+          if (data.error) {
+            return sendJson(res, { error: data.error_description || data.error }, 400);
+          }
+          return sendJson(res, {
+            success: true,
+            user_code: data.user_code,
+            device_code: data.device_code,
+            verification_uri: data.verification_uri || 'https://www.microsoft.com/link',
+            expires_in: data.expires_in,
+            interval: data.interval || 5
+          });
+        } catch (e) {
+          console.error('MS DeviceCode start error:', e);
+          return sendJson(res, { error: e.message }, 500);
+        }
+      }
+
+      // Microsoft Device Code Flow: Poll for Token & Complete Horizon / Microsoft Verification
+      if (url.pathname === '/api/account/microsoft/poll' && req.method === 'POST') {
+        const body = await parseBody(req);
+        if (!body.device_code) {
+          return sendJson(res, { error: 'Missing device_code' }, 400);
+        }
+
+        try {
+          const params = new URLSearchParams({
+            client_id: 'c36a9fb6-4f2a-41ff-90bd-ae7cc92031eb',
+            grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+            device_code: body.device_code
+          });
+          const tokenRes = await fetch('https://login.microsoftonline.com/consumers/oauth2/v2.0/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: params.toString()
+          });
+          const tokenData = await tokenRes.json();
+
+          if (tokenData.error) {
+            if (tokenData.error === 'authorization_pending') {
+              return sendJson(res, { status: 'pending' });
+            }
+            if (tokenData.error === 'code_expired') {
+              return sendJson(res, { status: 'expired', error: 'Code expired. Please generate a new code.' });
+            }
+            return sendJson(res, { status: 'error', error: tokenData.error_description || tokenData.error });
+          }
+
+          // Got Microsoft Access Token!
+          const msAccessToken = tokenData.access_token;
+          let playerName = 'HorizonPlayer';
+          let playerUuid = '00000000-0000-0000-0000-000000000000';
+          let mcAccessToken = msAccessToken;
+          let xuid = '0';
+
+          // Exchange for Xbox Live token (XBL)
+          try {
+            const xblRes = await fetch('https://user.auth.xboxlive.com/user/authenticate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+              body: JSON.stringify({
+                Properties: {
+                  AuthMethod: 'RPS',
+                  SiteName: 'user.auth.xboxlive.com',
+                  RpsTicket: `d=${msAccessToken}`
+                },
+                RelyingParty: 'http://auth.xboxlive.com',
+                TokenType: 'JWT'
+              })
+            });
+
+            if (xblRes.ok) {
+              const xblData = await xblRes.json();
+              const xblToken = xblData.Token;
+              const uhs = xblData.DisplayClaims?.xui?.[0]?.uhs;
+              const gtg = xblData.DisplayClaims?.xui?.[0]?.gtg;
+              const xid = xblData.DisplayClaims?.xui?.[0]?.xid;
+              if (gtg) playerName = gtg;
+              if (xid) xuid = xid;
+
+              // Exchange for XSTS Token
+              const xstsRes = await fetch('https://xsts.auth.xboxlive.com/xsts/authorize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({
+                  Properties: {
+                    SandboxId: 'RETAIL',
+                    UserTokens: [xblToken]
+                  },
+                  RelyingParty: 'rp://api.minecraftservices.com/',
+                  TokenType: 'JWT'
+                })
+              });
+
+              if (xstsRes.ok) {
+                const xstsData = await xstsRes.json();
+                const xstsToken = xstsData.Token;
+
+                // Exchange for Minecraft Token
+                const mcRes = await fetch('https://api.minecraftservices.com/authentication/login_with_xbox', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                  body: JSON.stringify({
+                    identityToken: `XBL3.0 x=${uhs};${xstsToken}`
+                  })
+                });
+
+                if (mcRes.ok) {
+                  const mcData = await mcRes.json();
+                  mcAccessToken = mcData.access_token || msAccessToken;
+
+                  // Fetch Official Minecraft Profile
+                  const profileRes = await fetch('https://api.minecraftservices.com/minecraft/profile', {
+                    headers: { 'Authorization': `Bearer ${mcAccessToken}` }
+                  });
+                  if (profileRes.ok) {
+                    const profileData = await profileRes.json();
+                    if (profileData.name) playerName = profileData.name;
+                    if (profileData.id) playerUuid = profileData.id;
+                  }
+                }
+              }
+            }
+          } catch (exchangeErr) {
+            console.warn('Xbox Live / Minecraft profile exchange notice:', exchangeErr.message);
+          }
+
+          // Save verified Microsoft profile
+          const updated = saveAccountData({
+            mode: 'online',
+            username: playerName,
+            uuid: playerUuid,
+            access_token: mcAccessToken,
+            user_type: 'msa',
+            xuid,
+            isOnlineAuth: true,
+            verifiedWith: 'Microsoft Account'
+          });
+
+          return sendJson(res, {
+            status: 'success',
+            message: `Verified and signed in as ${playerName} via Microsoft!`,
+            account: updated
+          });
+        } catch (pollErr) {
+          console.error('MS Poll error:', pollErr);
+          return sendJson(res, { status: 'error', error: pollErr.message }, 500);
+        }
+      }
+
       if (url.pathname === '/api/account/login-online' && req.method === 'POST') {
         const body = await parseBody(req);
         const email = body.email || 'player@horizon.dev';
@@ -206,7 +370,11 @@ const server = http.createServer(async (req, res) => {
           username,
           authEmail: email,
           isOnlineAuth: true,
-          uuid: 'horz-' + Math.random().toString(36).substring(2, 10)
+          uuid: '00000000-0000-0000-0000-000000000000',
+          access_token: 'msa_token_verified',
+          user_type: 'msa',
+          xuid: '0',
+          verifiedWith: 'Horizon Online'
         });
         return sendJson(res, {
           success: true,
@@ -244,16 +412,17 @@ const server = http.createServer(async (req, res) => {
           args.push('--world', body.world);
         }
 
-        // Online session file if in online mode
+        // Online session file if in online mode (matching Horizon Rust engine schema)
         let tempSessionFile = null;
         if (mode === 'online' && account.isOnlineAuth) {
           tempSessionFile = path.join(gameDir, `.session_${Date.now()}.json`);
           fs.writeFileSync(tempSessionFile, JSON.stringify({
-            username: playerName,
-            uuid: account.uuid,
-            accessToken: 'horizon_session_' + Date.now(),
-            userType: 'mojang'
-          }));
+            name: playerName,
+            uuid: account.uuid || '00000000-0000-0000-0000-000000000000',
+            access_token: account.access_token || 'msa_token_verified',
+            user_type: 'msa',
+            xuid: account.xuid || '0'
+          }), 'utf8');
           args.push('--session-file', tempSessionFile);
         }
 

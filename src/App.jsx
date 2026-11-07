@@ -34,7 +34,9 @@ import {
   Laptop,
   Radio,
   GitBranch,
-  Github
+  Github,
+  Copy,
+  Key
 } from 'lucide-react';
 import { sound } from './sound';
 
@@ -56,6 +58,11 @@ export default function App() {
   const [playerNameInput, setPlayerNameInput] = useState('Player_Jeet');
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [onlineEmailInput, setOnlineEmailInput] = useState('');
+  const [loginTab, setLoginTab] = useState('microsoft'); // 'microsoft' or 'horizon'
+  const [msDeviceCode, setMsDeviceCode] = useState(null);
+  const [msLoading, setMsLoading] = useState(false);
+  const [msError, setMsError] = useState(null);
+  const [msCopied, setMsCopied] = useState(false);
 
   const [worlds, setWorlds] = useState([]);
   const [mods, setMods] = useState([]);
@@ -199,6 +206,83 @@ export default function App() {
       showToast('Login error: ' + e.message, 'error');
     }
   };
+
+  const openLoginModal = (tab = 'microsoft') => {
+    sound.click();
+    setLoginTab(tab);
+    setShowLoginModal(true);
+    if (tab === 'microsoft' && !msDeviceCode) {
+      startMicrosoftLogin();
+    }
+  };
+
+  const startMicrosoftLogin = async () => {
+    sound.click();
+    setMsLoading(true);
+    setMsError(null);
+    setMsCopied(false);
+    try {
+      const res = await fetch('/api/account/microsoft/start', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setMsDeviceCode(data);
+        sound.toggle();
+      } else {
+        setMsError(data.error || 'Failed to start Microsoft verification');
+      }
+    } catch (err) {
+      setMsError(err.message);
+    } finally {
+      setMsLoading(false);
+    }
+  };
+
+  const copyAndOpenMicrosoftLink = () => {
+    if (!msDeviceCode) return;
+    sound.click();
+    navigator.clipboard.writeText(msDeviceCode.user_code);
+    setMsCopied(true);
+    setTimeout(() => setMsCopied(false), 4000);
+    window.open(msDeviceCode.verification_uri, '_blank');
+    showToast(`Code ${msDeviceCode.user_code} copied! Authorize on Microsoft.com/link`);
+  };
+
+  // Microsoft Device Code Poll Effect
+  useEffect(() => {
+    if (!msDeviceCode || !showLoginModal || loginTab !== 'microsoft') return;
+
+    const pollInterval = (msDeviceCode.interval || 5) * 1000;
+    const timer = setInterval(async () => {
+      try {
+        const res = await fetch('/api/account/microsoft/poll', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ device_code: msDeviceCode.device_code })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          clearInterval(timer);
+          setMsDeviceCode(null);
+          setAccount(data.account);
+          setPlayerNameInput(data.account.username);
+          setShowLoginModal(false);
+          sound.launch();
+          showToast(data.message || 'Microsoft Account verified successfully!', 'success');
+        } else if (data.status === 'expired') {
+          clearInterval(timer);
+          setMsDeviceCode(null);
+          setMsError('Device verification code expired. Please generate a new code.');
+        } else if (data.status === 'error') {
+          clearInterval(timer);
+          setMsError(data.error || 'Authorization error');
+        }
+      } catch (e) {
+        console.error('Poll error:', e);
+      }
+    }, pollInterval);
+
+    return () => clearInterval(timer);
+  }, [msDeviceCode, showLoginModal, loginTab]);
 
   const fetchStatus = async () => {
     try {
@@ -727,26 +811,49 @@ export default function App() {
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="font-extrabold text-base text-white tracking-wide">
                           {account.username || 'Player_Jeet'}
                         </span>
-                        <button
-                          onClick={() => {
-                            sound.click();
-                            setIsEditingName(true);
-                          }}
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5 cursor-pointer"
-                        >
-                          Change Name
-                        </button>
+                        {account.mode === 'offline' ? (
+                          <button
+                            onClick={() => {
+                              sound.click();
+                              setIsEditingName(true);
+                            }}
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5 cursor-pointer"
+                          >
+                            Change Name
+                          </button>
+                        ) : account.isOnlineAuth ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                              <ShieldCheck size={12} />
+                              <span>{account.verifiedWith || 'Microsoft MSA'}</span>
+                            </span>
+                            <button
+                              onClick={() => openLoginModal('microsoft')}
+                              className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 cursor-pointer"
+                            >
+                              Switch
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => openLoginModal('microsoft')}
+                            className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 hover:brightness-110 text-white cursor-pointer shadow-sm shadow-blue-500/20 flex items-center gap-1.5 animate-pulse"
+                          >
+                            <Key size={12} />
+                            <span>Verify Microsoft</span>
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
                   <p className="text-[11px] text-slate-400 font-medium">
                     {account.mode === 'offline' 
                       ? 'Local Offline Player Profile · Custom Name active' 
-                      : (account.isOnlineAuth ? `Signed in as ${account.authEmail || account.username}` : 'Horizon Online Mode · Microsoft Network')}
+                      : (account.isOnlineAuth ? `Signed in as ${account.username} (${account.verifiedWith || 'Microsoft MSA'})` : 'Horizon Online Mode · Microsoft Network Verification')}
                   </p>
                 </div>
               </div>
@@ -767,7 +874,7 @@ export default function App() {
                 <button
                   onClick={() => {
                     handleToggleMode('online');
-                    if (!account.isOnlineAuth) setShowLoginModal(true);
+                    if (!account.isOnlineAuth) openLoginModal('microsoft');
                   }}
                   className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
                     account.mode === 'online'
@@ -1569,65 +1676,200 @@ export default function App() {
 
       {/* ONLINE HORIZON / MICROSOFT LOGIN MODAL */}
       {showLoginModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#141620] border border-cyan-500/30 rounded-3xl p-7 space-y-6 shadow-2xl animate-float">
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-[#12141f] border border-cyan-500/40 rounded-3xl p-7 space-y-6 shadow-2xl animate-float">
+            
+            {/* Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                  <Radio size={22} />
+                <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center">
+                  {/* Microsoft 4-square mini logo */}
+                  <div className="grid grid-cols-2 gap-1 w-5 h-5">
+                    <div className="bg-[#f25022] rounded-xs"></div>
+                    <div className="bg-[#7fba00] rounded-xs"></div>
+                    <div className="bg-[#00a4ef] rounded-xs"></div>
+                    <div className="bg-[#ffb900] rounded-xs"></div>
+                  </div>
                 </div>
                 <div>
-                  <h3 className="text-lg font-extrabold text-white kinetic-headline">
-                    HORIZON ONLINE SIGN-IN
+                  <h3 className="text-xl font-extrabold text-white kinetic-headline flex items-center gap-2">
+                    HORIZON MULTIPLAYER AUTH
                   </h3>
-                  <p className="text-xs text-slate-400 font-medium">Connect for online multiplayer & Horizon servers</p>
+                  <p className="text-xs text-slate-400 font-medium">
+                    Official Microsoft OAuth2 & Horizon Engine Account
+                  </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowLoginModal(false)}
-                className="text-slate-400 hover:text-white cursor-pointer"
+                className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white cursor-pointer transition-colors"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
-                  Horizon / Microsoft Account Email or Gamertag:
-                </label>
-                <input
-                  type="text"
-                  value={onlineEmailInput}
-                  onChange={(e) => setOnlineEmailInput(e.target.value)}
-                  placeholder="e.g. warrior@horizon.dev or Spartan117"
-                  className="w-full bg-[#1b1e2c] border border-white/10 rounded-xl px-4 py-3 text-sm text-white font-semibold focus:outline-none focus:border-cyan-500"
-                  autoFocus
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleOnlineLogin(); }}
-                />
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-xs text-cyan-200 font-medium space-y-1">
-                <p>✓ Grants authenticated online token for multiplayer servers</p>
-                <p>✓ Keeps your custom offline worlds and skins safe</p>
-                <p>✓ Switch back to Offline Mode anytime with 1 click</p>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-2">
+            {/* Sub-tabs: Microsoft OAuth vs Horizon Direct */}
+            <div className="flex bg-[#0b0c13] p-1 rounded-2xl border border-white/5">
               <button
-                onClick={() => setShowLoginModal(false)}
-                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:text-white cursor-pointer"
+                onClick={() => {
+                  sound.toggle();
+                  setLoginTab('microsoft');
+                  if (!msDeviceCode) startMicrosoftLogin();
+                }}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                  loginTab === 'microsoft'
+                    ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-cyan-600/30'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
               >
-                Cancel
+                <ShieldCheck size={15} />
+                <span>Microsoft Account (MSA)</span>
               </button>
               <button
-                onClick={handleOnlineLogin}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-sm font-extrabold text-white shadow-lg shadow-cyan-600/30 cursor-pointer"
+                onClick={() => {
+                  sound.toggle();
+                  setLoginTab('horizon');
+                }}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                  loginTab === 'horizon'
+                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
               >
-                Connect Horizon Online
+                <User size={15} />
+                <span>Direct Gamer ID</span>
               </button>
             </div>
+
+            {/* TAB CONTENT: MICROSOFT DEVICE CODE FLOW */}
+            {loginTab === 'microsoft' && (
+              <div className="space-y-5">
+                {msError && (
+                  <div className="p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-between text-xs text-rose-300">
+                    <span className="font-semibold">{msError}</span>
+                    <button
+                      onClick={startMicrosoftLogin}
+                      className="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 font-bold cursor-pointer"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
+
+                {msLoading ? (
+                  <div className="py-12 flex flex-col items-center justify-center space-y-4">
+                    <RefreshCw size={36} className="text-cyan-400 animate-spin" />
+                    <p className="text-sm font-bold text-slate-300">Contacting Microsoft Login Services...</p>
+                  </div>
+                ) : msDeviceCode ? (
+                  <div className="space-y-4">
+                    <div className="text-center p-5 rounded-2xl bg-[#090b10] border border-cyan-500/30 shadow-inner space-y-2">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono">
+                        Your Microsoft Verification Code:
+                      </p>
+                      <div className="py-2 px-4 rounded-xl bg-[#151926] border border-cyan-400/50 inline-block shadow-lg shadow-cyan-500/10">
+                        <span className="text-3xl font-black text-cyan-300 font-mono tracking-widest select-all">
+                          {msDeviceCode.user_code}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400">
+                        Enter this code at <span className="text-cyan-400 font-mono font-bold">microsoft.com/link</span>
+                      </p>
+                    </div>
+
+                    {/* Copy and Open Link Action */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={copyAndOpenMicrosoftLink}
+                        className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 via-cyan-600 to-emerald-600 hover:brightness-110 text-white font-extrabold text-sm cursor-pointer shadow-xl shadow-cyan-600/30 transition-transform active:scale-98"
+                      >
+                        {msCopied ? <Check size={18} /> : <Copy size={18} />}
+                        <span>{msCopied ? 'Code Copied! Opening Browser...' : 'Copy Code & Open Microsoft Login'}</span>
+                        <ExternalLink size={16} />
+                      </button>
+                      <button
+                        onClick={startMicrosoftLogin}
+                        title="Generate New Code"
+                        className="p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer border border-white/5"
+                      >
+                        <RefreshCw size={18} />
+                      </button>
+                    </div>
+
+                    {/* Step-by-Step Instructions & Live Radar */}
+                    <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 space-y-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></div>
+                        <span className="text-xs font-bold text-cyan-300 uppercase tracking-wider">
+                          Waiting for you to authorize in browser...
+                        </span>
+                      </div>
+                      <ol className="text-xs text-slate-300 space-y-1 list-decimal list-inside leading-relaxed">
+                        <li>The code <strong className="text-cyan-300 font-mono">{msDeviceCode.user_code}</strong> is copied to your clipboard</li>
+                        <li>Paste it at <strong className="text-white">microsoft.com/link</strong> in the opened tab</li>
+                        <li>Log in to your Minecraft / Microsoft profile</li>
+                        <li>Horizon will instantly detect your authorization and verify your Gamertag!</li>
+                      </ol>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-8 flex flex-col items-center justify-center text-center space-y-4">
+                    <p className="text-sm text-slate-300 max-w-sm">
+                      Connect your official Minecraft account via Microsoft OAuth2 device authorization.
+                    </p>
+                    <button
+                      onClick={startMicrosoftLogin}
+                      className="flex items-center gap-2 px-7 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:brightness-110 text-white font-extrabold text-sm shadow-xl shadow-blue-600/30 cursor-pointer"
+                    >
+                      <Key size={16} />
+                      <span>Start Microsoft Verification</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB CONTENT: DIRECT HORIZON GAMER ID */}
+            {loginTab === 'horizon' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+                    Horizon Direct Gamertag or Email:
+                  </label>
+                  <input
+                    type="text"
+                    value={onlineEmailInput}
+                    onChange={(e) => setOnlineEmailInput(e.target.value)}
+                    placeholder="e.g. warrior@horizon.dev or Spartan117"
+                    className="w-full bg-[#1b1e2c] border border-white/10 rounded-xl px-4 py-3 text-sm text-white font-semibold focus:outline-none focus:border-purple-500"
+                    autoFocus
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleOnlineLogin(); }}
+                  />
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-200 font-medium space-y-1">
+                  <p>✓ Instant connection for Horizon custom LAN and dev servers</p>
+                  <p>✓ Keeps your custom offline worlds and skins safe</p>
+                  <p>✓ Switch back to Offline Mode anytime with 1 click</p>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    onClick={() => setShowLoginModal(false)}
+                    className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:text-white cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleOnlineLogin}
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-sm font-extrabold text-white shadow-lg shadow-purple-600/30 cursor-pointer"
+                  >
+                    Connect Horizon
+                  </button>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       )}
