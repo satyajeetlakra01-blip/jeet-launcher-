@@ -1,0 +1,26 @@
+# Robots.txt for Jeet Launcher Official Portal
+User-agent: *
+Allow: /
+Allow: /logo.svg
+Allow: /logo-256.png
+Disallow: /api/
+
+# Explicit Search Engine Crawlers
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+# Host & Sitemap
+Host: https://jeetlauncher.com
+Sitemap: https://jeetlauncher.com/sitemap.xml
