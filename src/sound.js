@@ -173,6 +173,11 @@ class SoundFX {
     } catch (e) {}
   }
 
+  // Triumphant success / benchmark completion chord
+  success() {
+    this.chime();
+  }
+
   // Cyber laser transient
   laser() {
     if (!this.enabled) return;
