@@ -39,6 +39,7 @@ import {
   Key
 } from 'lucide-react';
 import { sound } from './sound';
+import JeetLogo from './JeetLogo';
 
 export default function App() {
   const [isBooting, setIsBooting] = useState(true);
@@ -593,14 +594,7 @@ export default function App() {
         <div className="absolute w-[500px] h-[500px] bg-purple-600/15 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
 
         <div className="relative z-10 flex flex-col items-center text-center space-y-6">
-          <div className="relative flex items-center justify-center">
-            <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-[#9333ea] via-[#3b82f6] to-[#06b6d4] p-[2px] shadow-2xl shadow-purple-500/30 animate-float">
-              <div className="w-full h-full bg-[#0d0e14] rounded-[22px] flex items-center justify-center">
-                <Zap className="text-purple-400 w-12 h-12 fill-purple-400" />
-              </div>
-            </div>
-            <div className="absolute -inset-2 rounded-3xl bg-purple-500/20 blur-xl animate-ping opacity-75"></div>
-          </div>
+          <JeetLogo className="w-24 h-24 md:w-28 md:h-28 animate-float" />
 
           <div className="space-y-1">
             <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight kinetic-headline text-white">
@@ -679,11 +673,7 @@ export default function App() {
         <div>
           <div className="px-3 py-4 mb-4 border-b border-white/5">
             <div className="flex items-center gap-3">
-              <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#9333ea] to-[#06b6d4] p-[2px] shadow-lg shadow-purple-500/25">
-                <div className="w-full h-full bg-[#0d0e14] rounded-[14px] flex items-center justify-center">
-                  <Zap className="text-white w-5 h-5 fill-purple-400" />
-                </div>
-              </div>
+              <JeetLogo className="w-10 h-10" />
               <div>
                 <h1 className="text-base font-extrabold tracking-wider kinetic-headline bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
                   JEET LAUNCHER

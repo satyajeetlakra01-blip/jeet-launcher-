@@ -455,6 +455,19 @@ const server = http.createServer(async (req, res) => {
             exec(`powershell -Command "Get-Process -Id ${child.pid} | ForEach-Object { $_.PriorityClass = 'High' }"`);
           } catch (e) {}
 
+          // Apply Jeet Launcher logo to the Horizon game window
+          try {
+            const iconScript = path.join(path.dirname(active.clientExe), 'set_game_icon.ps1');
+            const iconPath = path.join(path.dirname(active.clientExe), 'game-icon.ico');
+            if (fs.existsSync(iconScript) && fs.existsSync(iconPath)) {
+              exec(`powershell -ExecutionPolicy Bypass -File "${iconScript}" -ProcessId ${child.pid} -IconPath "${iconPath}"`, (err, stdout) => {
+                if (!err) console.log('[JeetLauncher] Game window icon applied:', stdout.trim());
+              });
+            }
+          } catch (iconErr) {
+            console.error('Failed to trigger icon setter:', iconErr);
+          }
+
           return sendJson(res, { success: true, pid: child.pid, mode, playerName });
         } catch (spawnErr) {
           console.error('Spawn exception:', spawnErr);
