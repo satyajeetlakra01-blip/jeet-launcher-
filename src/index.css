@@ -1,0 +1,223 @@
+:root {
+  --bg-primary: #08090d;
+  --bg-secondary: #0f1118;
+  --bg-card: rgba(22, 25, 36, 0.75);
+  --bg-card-hover: rgba(30, 34, 48, 0.9);
+  --accent-purple: #9333ea;
+  --accent-violet: #a855f7;
+  --accent-cyan: #06b6d4;
+  --accent-green: #10b981;
+  --accent-amber: #f59e0b;
+  --accent-red: #ef4444;
+  --border-color: rgba(255, 255, 255, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: #f1f5f9;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(168, 85, 247, 0.3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.7);
+}
+
+/* ------------------------------------------------------------- */
+/* HYPERMOTION PRINCIPLES & AGGRESSIVE KINETIC TYPOGRAPHY        */
+/* ------------------------------------------------------------- */
+
+/* -6° Skew + Multi-layered Extrusion Shadows */
+.kinetic-headline {
+  transform: skewX(-6deg);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  text-shadow: 
+    2px 2px 0px #7928ca,
+    4px 4px 0px #4c1d95,
+    6px 6px 16px rgba(168, 85, 247, 0.5);
+  display: inline-block;
+}
+
+.kinetic-subheadline {
+  transform: skewX(-4deg);
+  font-weight: 800;
+  text-shadow: 
+    1px 1px 0px #0891b2,
+    2px 2px 0px #164e63,
+    4px 4px 10px rgba(6, 182, 212, 0.4);
+  display: inline-block;
+}
+
+.kinetic-devil {
+  transform: skewX(-6deg);
+  font-weight: 900;
+  text-shadow: 
+    2px 2px 0px #dc2626,
+    4px 4px 0px #7f1d1d,
+    6px 6px 14px rgba(239, 68, 68, 0.6);
+  display: inline-block;
+}
+
+/* Never Freeze: Micro-motion holding frame */
+@keyframes micro-drift {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(1.5px, -1.2px) scale(1.008);
+  }
+  66% {
+    transform: translate(-1.2px, 1.4px) scale(0.994);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-micro-drift {
+  animation: micro-drift 6s ease-in-out infinite;
+}
+
+/* Subtle floating pulse */
+@keyframes subtle-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.animate-float {
+  animation: subtle-float 3.5s ease-in-out infinite;
+}
+
+/* Background Cyber Grid */
+.cyber-grid {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+/* Glowing Border Pulse */
+@keyframes border-glow {
+  0%, 100% {
+    border-color: rgba(168, 85, 247, 0.25);
+    box-shadow: 0 0 15px rgba(168, 85, 247, 0.15);
+  }
+  50% {
+    border-color: rgba(168, 85, 247, 0.65);
+    box-shadow: 0 0 25px rgba(168, 85, 247, 0.35);
+  }
+}
+
+.animate-border-glow {
+  animation: border-glow 3s infinite ease-in-out;
+}
+
+/* Slam Shake (when launch game is triggered) */
+@keyframes slam-shake {
+  0% { transform: scale(1) translate(0, 0); }
+  15% { transform: scale(1.03) translate(-3px, 2px); }
+  30% { transform: scale(0.98) translate(3px, -2px); }
+  45% { transform: scale(1.02) translate(-2px, -2px); }
+  60% { transform: scale(0.99) translate(2px, 1px); }
+  75% { transform: scale(1.01) translate(-1px, 1px); }
+  100% { transform: scale(1) translate(0, 0); }
+}
+
+.slam-active {
+  animation: slam-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+/* Shimmer Sweep Animation */
+@keyframes laser-sweep {
+  0% {
+    left: -150%;
+  }
+  50%, 100% {
+    left: 150%;
+  }
+}
+
+.laser-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.laser-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.28),
+    transparent
+  );
+  transform: skewX(-20deg);
+  animation: laser-sweep 3s infinite ease-in-out;
+}
+
+/* Glowing Card Effect */
+.glass-panel {
+  background: rgba(16, 18, 26, 0.7);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card {
+  background: rgba(22, 25, 36, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  background: rgba(30, 34, 48, 0.85);
+  border-color: rgba(168, 85, 247, 0.35);
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.6), 0 0 16px rgba(168, 85, 247, 0.15);
+}
+
+/* CRT Scanlines Overlay */
+.scanlines {
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0),
+    rgba(255, 255, 255, 0) 50%,
+    rgba(0, 0, 0, 0.2) 50%,
+    rgba(0, 0, 0, 0.2)
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+}
