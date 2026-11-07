@@ -152,7 +152,9 @@ const mimeTypes = {
   '.jpg': 'image/jpeg',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
-  '.woff2': 'font/woff2'
+  '.woff2': 'font/woff2',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm'
 };
 
 const server = http.createServer(async (req, res) => {
@@ -816,6 +818,7 @@ const server = http.createServer(async (req, res) => {
 
   // STATIC FILE SERVING WITH COMPREHENSIVE FALLBACKS
   let cleanPath = url.pathname === '/' ? 'index.html' : url.pathname.replace(/^\/+/, '');
+  if (cleanPath === 'landing') cleanPath = 'landing.html';
   let filePath = path.join(distDir, cleanPath);
   
   if (!fs.existsSync(filePath)) {
@@ -829,14 +832,35 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  if (!fs.existsSync(filePath)) {
+  if (!fs.existsSync(filePath) && cleanPath !== 'landing.html') {
     filePath = path.join(distDir, 'index.html');
   }
 
   if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     const ext = path.extname(filePath);
+    const stat = fs.statSync(filePath);
+    const mime = mimeTypes[ext] || 'application/octet-stream';
+
+    // Support Video Partial Content (HTTP 206) for smooth seeking
+    if (ext === '.mp4' && req.headers.range) {
+      const parts = req.headers.range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
+      const chunkSize = (end - start) + 1;
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${stat.size}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunkSize,
+        'Content-Type': mime
+      });
+      fs.createReadStream(filePath, { start, end }).pipe(res);
+      return;
+    }
+
     res.writeHead(200, {
-      'Content-Type': mimeTypes[ext] || 'application/octet-stream',
+      'Content-Type': mime,
+      'Content-Length': stat.size,
+      'Accept-Ranges': 'bytes',
       'Cache-Control': 'no-cache'
     });
     fs.createReadStream(filePath).pipe(res);
