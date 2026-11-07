@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { sound } from './sound';
 import JeetLogo from './JeetLogo';
+import CosmicBackground from './CosmicBackground';
 
 export default function App() {
   const [isBooting, setIsBooting] = useState(true);
@@ -660,11 +661,8 @@ export default function App() {
   }
 
   return (
-    <div
-      className={`flex h-screen w-screen bg-[#090a0e] text-[#f1f5f9] select-none overflow-hidden font-['Plus_Jakarta_Sans',sans-serif] ${
-        isSlamming ? 'slam-active' : ''
-      }`}
-    >
+    <CosmicBackground className={isSlamming ? 'slam-active' : ''}>
+      <div className="flex h-screen w-screen select-none overflow-hidden font-['Plus_Jakarta_Sans',sans-serif]">
       <div className="absolute inset-0 cyber-grid opacity-15 pointer-events-none"></div>
 
       {toast && (
@@ -1885,6 +1883,7 @@ export default function App() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </CosmicBackground>
   );
 }

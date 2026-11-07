@@ -221,3 +221,43 @@ body {
   background-size: 100% 4px;
   pointer-events: none;
 }
+
+/* Horizon Perspective Grid Plane */
+.horizon-perspective-grid {
+  background-image: 
+    linear-gradient(to right, rgba(0, 242, 254, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 242, 254, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  transform: perspective(400px) rotateX(60deg);
+  transform-origin: center bottom;
+  mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.45) 0%, transparent 85%);
+  -webkit-mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.45) 0%, transparent 85%);
+}
+
+/* Aurora wave animation (gentle, living micro-motion) */
+@keyframes aurora-shift-1 {
+  0% { transform: translate(0px, 0px) scale(1); }
+  50% { transform: translate(25px, -15px) scale(1.06); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+@keyframes aurora-shift-2 {
+  0% { transform: translate(0px, 0px) scale(1); }
+  50% { transform: translate(-20px, 15px) scale(1.04); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+.aurora-beam-1 {
+  animation: aurora-shift-1 16s ease-in-out infinite;
+}
+
+.aurora-beam-2 {
+  animation: aurora-shift-2 22s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-beam-1,
+  .aurora-beam-2 {
+    animation: none;
+  }
+}
