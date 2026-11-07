@@ -39,21 +39,11 @@ import {
   Key
 } from 'lucide-react';
 import { sound } from './sound';
-import LandingPage from './LandingPage';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState(() => {
-    try {
-      const p = new URLSearchParams(window.location.search);
-      return p.get('view') === 'landing' || window.location.pathname === '/landing' ? 'landing' : 'launcher';
-    } catch (e) {
-      return 'launcher';
-    }
-  });
-
   const [isBooting, setIsBooting] = useState(true);
   const [bootProgress, setBootProgress] = useState(0);
-  const [bootText, setBootText] = useState('POWERING UP HYPER-ENGINE...');
+  const [bootText, setBootText] = useState('INITIALIZING HORIZON ENGINE...');
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   const [activeTab, setActiveTab] = useState('play');
@@ -595,18 +585,6 @@ export default function App() {
     } catch (e) {}
   };
 
-  // If user requested Landing Showcase view
-  if (currentView === 'landing') {
-    return (
-      <LandingPage
-        onSwitchToLauncher={() => {
-          setIsBooting(false);
-          setCurrentView('launcher');
-        }}
-      />
-    );
-  }
-
   // Boot sequence animation overlay
   if (isBooting) {
     return (
@@ -748,22 +726,6 @@ export default function App() {
         <div className="space-y-2">
           <button
             onClick={() => {
-              sound.click();
-              setCurrentView('landing');
-            }}
-            className="w-full flex items-center justify-between p-2.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-xs text-cyan-300 font-bold transition-all cursor-pointer shadow-sm shadow-cyan-500/10"
-          >
-            <span className="flex items-center gap-2">
-              <Globe size={15} />
-              <span>Showcase Landing</span>
-            </span>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-200">
-              100X
-            </span>
-          </button>
-
-          <button
-            onClick={() => {
               sound.toggle(!soundEnabled);
               setSoundEnabled(!soundEnabled);
             }}
@@ -810,23 +772,9 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    sound.click();
-                    setCurrentView('landing');
-                  }}
-                  className="flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 transition-colors cursor-pointer shadow-sm shadow-cyan-500/20"
-                  title="Switch to 100X React Landing Page Showcase"
-                >
-                  <Globe size={14} />
-                  <span>Showcase Landing</span>
-                </button>
-
-                <div className="flex items-center gap-2 text-xs font-mono font-bold px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300">
-                  <Sun size={14} className="text-yellow-400 animate-spin" />
-                  <span>SHADERS LINKED</span>
-                </div>
+              <div className="flex items-center gap-2 text-xs font-mono font-bold px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300">
+                <Sun size={14} className="text-yellow-400 animate-spin" />
+                <span>SHADERS LINKED</span>
               </div>
             </div>
 
