@@ -129,6 +129,19 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
+  // Keyboard accessibility: Escape key closes active modals (R-32)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (showLoginModal) setShowLoginModal(false);
+        if (showCreateWorld) setShowCreateWorld(false);
+        if (isEditingName) setIsEditingName(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showLoginModal, showCreateWorld, isEditingName]);
+
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
     if (type === 'error') sound.toggle(false);
@@ -923,7 +936,7 @@ export default function App() {
                       <option value="">[Title Screen / Main Menu]</option>
                       {worlds.map((w) => (
                         <option key={w.name} value={w.name}>
-                          {w.isDevil ? '🔥 ' : '🌍 '}
+                          {w.isDevil ? '[Devil Realm] ' : '[World] '}
                           {w.name} ({w.size})
                         </option>
                       ))}
@@ -943,7 +956,7 @@ export default function App() {
                   </button>
 
                   <p className="text-xs text-slate-400 text-center font-mono">
-                    {status.gameRunning ? '🟢 Process Live (PID Active)' : '⚡ Ready for High CPU Priority Launch'}
+                    {status.gameRunning ? 'Process Live (PID Active)' : 'Ready for High CPU Priority Launch'}
                   </p>
                 </div>
               </div>
@@ -1837,10 +1850,19 @@ export default function App() {
                   />
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-200 font-medium space-y-1">
-                  <p>✓ Instant connection for Horizon custom LAN and dev servers</p>
-                  <p>✓ Keeps your custom offline worlds and skins safe</p>
-                  <p>✓ Switch back to Offline Mode anytime with 1 click</p>
+                <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-200 font-medium space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Check size={14} className="text-purple-400 flex-shrink-0" />
+                    <span>Instant connection for Horizon custom LAN and dev servers</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Check size={14} className="text-purple-400 flex-shrink-0" />
+                    <span>Keeps your custom offline worlds and skins safe</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Check size={14} className="text-purple-400 flex-shrink-0" />
+                    <span>Switch back to Offline Mode anytime with 1 click</span>
+                  </div>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-2">
